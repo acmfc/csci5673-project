@@ -1,10 +1,11 @@
+from driver_constants import *
+import json
 import random
+import socket
 import time
 
-NUM_LANES = 2
-ROAD_LENGTH = 40
-MAX_VELOCITY = 5
-PROBABILITY_DECELERATE = 0.1
+NUM_SOLUTION_VEHICLES = 2
+BROADCAST_RANGE = 15 # The range of broadcast messages in cells.
 
 def make_road(num_lanes, length):
     '''Returns a 2d array representing a road with num_lanes lanes and length
@@ -13,22 +14,18 @@ def make_road(num_lanes, length):
     # for each lane.
     return [[None for _ in range(length)] for _ in range(num_lanes)]
 
-class RoadView():
-    '''Represents a line-of-sight view from an initial location in the road. This
-    is the information a vehicle would be able to gain without any network
-    connection.'''
+def space_ahead(road, lane, location):
+    '''Returns the number of free cells in front of the current location.
+    If there are more than MAX_VELOCITY cells, returns MAX_VELOCITY.'''
+    ret = 0
+    def get_wrapped_location(offset):
+        return (location + offset) % ROAD_LENGTH
 
-    def __init__(self, road, location, max_distance):
-        self.road = road
-        self.location = location
-        self.max_distance = max_distance
+    while (ret < MAX_VELOCITY and
+            road[lane][get_wrapped_location(ret + 1)] is None):
+        ret += 1
 
-    def get(self, lane, location_offset):
-        if abs(location_offset) > self.max_distance:
-            raise ValueError('Requested location not visible')
-
-        location = (self.location + location_offset) % len(self.road[0])
-        return self.road[lane][location]
+    return ret
 
 class Car():
     def __init__(self, road, lane, location, velocity):
@@ -38,40 +35,39 @@ class Car():
         self.lane = lane
         self.location = location
         self.velocity = velocity
-        self.view = RoadView(road, location, MAX_VELOCITY)
-
+        self.road = road
         road[lane][location] = self
+
+    def update_velocity(self):
+        self.accelerate()
+        self.decelerate()
+        self.randomize()
 
     def accelerate(self):
         if self.velocity < MAX_VELOCITY:
             self.velocity += 1
 
     def decelerate(self):
-        space_in_front = 0
-        while (space_in_front < MAX_VELOCITY and
-                self.view.get(self.lane, space_in_front + 1) is None):
-            space_in_front += 1
-        if space_in_front < self.velocity:
-            self.velocity = space_in_front
+        space = space_ahead(self.road, self.lane, self.location)
+        if space < self.velocity:
+            self.velocity = space
 
     def randomize(self):
         if self.velocity >= 1 and random.uniform(0, 1) < PROBABILITY_DECELERATE:
             self.velocity -= 1
 
     def move(self):
-        self.location += self.velocity
-        self.view.location += self.velocity
+        self.location = (self.location + self.velocity) % ROAD_LENGTH
+
+    def notify(self, msg):
+        '''Deliver a broadcast message. Non-solution vehicles can ignore
+        these.'''
+        pass
 
 def step(road, cars):
     '''Run one step in the Nagel-Schreckenberg model.'''
-    # In an NS automaton, each operation happens on every object before moving
-    # on to the next operation. In this case, accelerate, decelerate, and
-    # randomize can be done together for every car because none of them depends
-    # on any other.
     for car in cars:
-        car.accelerate()
-        car.decelerate()
-        car.randomize()
+        car.update_velocity()
     for car in cars:
         lane = road[car.lane]
         lane[car.location % len(lane)] = None
@@ -83,12 +79,57 @@ def print_road(road, carnames):
     for lane in road:
         print(' '.join(
             carnames[car] if car is not None else '_' for car in lane))
-    print()
+    print('')
+
+class SolutionVehicle():
+    '''Interface for networked solution vehicles.'''
+
+    def __init__(self, socket, road):
+        self.socket = socket
+
+        msg = self.receive_msg()
+        self.lane = msg['lane']
+        self.location = msg['location']
+        self.velocity = msg['velocity']
+
+        if road[self.lane][self.location] is not None:
+            raise ValueError('Requested location is already occupied')
+
+        road[self.lane][self.location] = self
+        self.road = road
+
+    def receive_msg(self):
+        # TODO Ensure the entire message was received.
+        msg = self.socket.recv(1024)
+        return json.loads(msg.decode('utf-8'))
+
+    def notify(self, msg):
+        '''Delivers a broadcast message that the solution would have received -
+        one that was sent by another vehicle in range.'''
+        self.socket.sendall(bytes(json.dumps(msg), 'utf-8'))
+
+    def update_velocity(self):
+        msg = self.receive_msg()
+        self.velocity = msg['velocity']
+
+    def move(self):
+        self.location = (self.location + self.velocity) % ROAD_LENGTH
 
 def main():
     road = make_road(NUM_LANES, ROAD_LENGTH)
-    cars = [Car(road, 0, i, 5) for i in range(0, ROAD_LENGTH, 5)]
+
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.bind(('localhost', 8080))
+    listener.listen()
+
+    solution_vehicles = []
+    for _ in range(NUM_SOLUTION_VEHICLES):
+        sock, _ = listener.accept()
+        solution_vehicles.append(SolutionVehicle(sock, road))
+
+    cars = [Car(road, 0, i, 5) for i in range(5, ROAD_LENGTH, 5)]
     cars.append(Car(road, 1, 0, 5))
+    cars.extend(solution_vehicles)
 
     ids = (chr(i) for i in range(ord('0'), ord('~')))
     carnames = {car: next(ids) for car in cars}
@@ -97,6 +138,30 @@ def main():
 
     while True:
         time.sleep(1)
+
+        # Share broadcast messages with all other vehicles in range.
+
+        to_notify = {(car.lane, car.location): [] for car in cars}
+        print('to_notify: {}'.format(to_notify))
+        # Start by collecting all messages that will be delivered to each
+        # solution vehicle.
+        for sv in solution_vehicles:
+            msg = sv.receive_msg()
+            print('DBG Received broadcast:{}'.format(msg))
+            for offset in range(1, BROADCAST_RANGE + 1):
+                for offset in (offset, -offset):
+                    for lane in range(NUM_LANES):
+                        location = (sv.location * 2 + offset) % len(road[lane])
+                        if road[lane][location] is not None:
+                            to_notify[(lane, location)].append(msg)
+
+        # Deliver all collected messages along with the amount of free space
+        # ahead.
+        for coords in to_notify:
+            car = road[coords[0]][coords[1]]
+            space = space_ahead(road, car.lane, car.location)
+            car.notify({'space_ahead': space, 'msgs': to_notify[coords]})
+
         step(road, cars)
         print_road(road, carnames)
 
