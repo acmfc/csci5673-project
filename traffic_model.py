@@ -3,6 +3,7 @@ import json
 import random
 import socket
 import time
+import argparse
 
 NUM_SOLUTION_VEHICLES = 2
 BROADCAST_RANGE = 15 # The range of broadcast messages in cells.
@@ -36,6 +37,8 @@ class Car():
         self.location = location
         self.velocity = velocity
         self.road = road
+        self.vel_tracker = []
+
         road[lane][location] = self
 
     def update_velocity(self):
@@ -74,6 +77,7 @@ def step(road, cars):
         car.move()
         lane = road[car.lane]
         lane[car.location % len(lane)] = car
+        car.vel_tracker.append(car.velocity)
 
 def print_road(road, carnames):
     for lane in road:
@@ -91,6 +95,7 @@ class SolutionVehicle():
         self.lane = msg['lane']
         self.location = msg['location']
         self.velocity = msg['velocity']
+        self.vel_tracker = []
 
         if road[self.lane][self.location] is not None:
             raise ValueError('Requested location is already occupied')
@@ -115,7 +120,7 @@ class SolutionVehicle():
     def move(self):
         self.location = (self.location + self.velocity) % ROAD_LENGTH
 
-def main():
+def main(run_time):
     road = make_road(NUM_LANES, ROAD_LENGTH)
 
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -136,7 +141,9 @@ def main():
 
     print_road(road, carnames)
 
-    while True:
+    step_count = 0
+
+    while step_count <= run_time:
         time.sleep(1)
 
         # Share broadcast messages with all other vehicles in range.
@@ -163,7 +170,22 @@ def main():
             car.notify({'space_ahead': space, 'msgs': to_notify[coords]})
 
         step(road, cars)
+        step_count += 1
         print_road(road, carnames)
 
+    total_distance = 0
+    for car in cars:
+        print("{}: {}".format(carnames[car], car.vel_tracker))
+        total_distance += sum(car.vel_tracker)
+    highway_mean_velocity = (total_distance / step_count) / len(cars)
+
+    print("Average freeway velocity: {}".format(highway_mean_velocity))
+
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--run', type=int, default=25)
+    args = parser.parse_args()
+
+    run_time = args.run
+
+    main(run_time)

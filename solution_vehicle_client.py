@@ -3,15 +3,12 @@ import json
 import socket
 import sys
 import time
+import argparse
 
-def main():
-    # TODO Parse command line options to get an initial state.
-    lane = 0
-    location = 0
-    velocity = 0
+def main(lane, location, velocity):
 
-    if len(sys.argv) > 1:
-        location = int(sys.argv[1])
+    # if len(sys.argv) > 1:
+    #     location = int(sys.argv[1])
 
     sock = socket.create_connection(('localhost', 8080), 500)
     sock.sendall(bytes(json.dumps(
@@ -39,4 +36,14 @@ def main():
         location = (location + velocity) % ROAD_LENGTH
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--lane', type=int, default=0)
+    parser.add_argument('--loc', type=int, default=0)
+    parser.add_argument('--vel', type=int, default=0)
+    args = parser.parse_args()
+
+    lane = args.lane
+    location = args.loc
+    velocity = args.vel
+
+    main(lane, location, velocity)
