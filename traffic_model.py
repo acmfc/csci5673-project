@@ -4,8 +4,9 @@ import random
 import socket
 import time
 import argparse
+import random
 
-NUM_SOLUTION_VEHICLES = 2
+# NUM_SOLUTION_VEHICLES = 0
 BROADCAST_RANGE = 15 # The range of broadcast messages in cells.
 
 def make_road(num_lanes, length):
@@ -132,8 +133,12 @@ def main(run_time):
         sock, _ = listener.accept()
         solution_vehicles.append(SolutionVehicle(sock, road))
 
-    cars = [Car(road, 0, i, 5) for i in range(5, ROAD_LENGTH, 5)]
-    cars.append(Car(road, 1, 0, 5))
+
+    car_count = round(ROAD_LENGTH * DENSITY)
+    interval = round(ROAD_LENGTH / car_count)
+    cars = [Car(road, 0, i, 5) for i in 
+                range(NUM_SOLUTION_VEHICLES * interval, ROAD_LENGTH, interval)]
+    # cars.append(Car(road, 1, 0, 5))
     cars.extend(solution_vehicles)
 
     ids = (chr(i) for i in range(ord('0'), ord('~')))
@@ -183,9 +188,11 @@ def main(run_time):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--run', type=int, default=25)
+    parser.add_argument('--run', type=int, default=15)
+    parser.add_argument('--sv', type=int, default=0)
     args = parser.parse_args()
 
     run_time = args.run
+    NUM_SOLUTION_VEHICLES = args.sv
 
     main(run_time)
