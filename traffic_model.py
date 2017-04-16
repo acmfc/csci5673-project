@@ -125,7 +125,7 @@ def main(run_time):
     road = make_road(NUM_LANES, ROAD_LENGTH)
 
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    listener.bind(('localhost', 8080))
+    listener.bind(('localhost', 8000))
     listener.listen()
 
     solution_vehicles = []
@@ -159,7 +159,7 @@ def main(run_time):
         # solution vehicle.
         for sv in solution_vehicles:
             msg = sv.receive_msg()
-            print('DBG Received broadcast:{}'.format(msg))
+            # print('DBG Received broadcast:{}'.format(msg))
             for offset in range(1, BROADCAST_RANGE + 1):
                 for offset in (offset, -offset):
                     for lane in range(NUM_LANES):
@@ -172,7 +172,17 @@ def main(run_time):
         for coords in to_notify:
             car = road[coords[0]][coords[1]]
             space = space_ahead(road, car.lane, car.location)
-            car.notify({'space_ahead': space, 'msgs': to_notify[coords]})
+            
+            # Find the next vehicle ahead of the current
+            location = (coords[1]+1) % ROAD_LENGTH
+            while road[coords[0]][location] is None:
+                location = (location + 1) % ROAD_LENGTH
+
+            car_ahead = road[coords[0]][location]
+            velocity_ahead = car_ahead.velocity
+            space_one_ahead = space_ahead(road, car_ahead.lane, car_ahead.location)
+            car.notify({'space_ahead': space, 'velocity_ahead': velocity_ahead, 
+                'space_one_ahead': space_one_ahead, 'msgs': to_notify[coords]})
 
         step(road, cars)
         step_count += 1
