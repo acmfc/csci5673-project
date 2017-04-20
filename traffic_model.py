@@ -63,7 +63,7 @@ class Car():
     def move(self):
         self.location = (self.location + self.velocity) % ROAD_LENGTH
 
-    def notify(self, msg):
+    def notify(self, msg, command):
         '''Deliver a broadcast message. Non-solution vehicles can ignore
         these.'''
         pass
@@ -71,7 +71,10 @@ class Car():
 def step(road, cars):
     '''Run one step in the Nagel-Schreckenberg model.'''
     for car in cars:
-        car.update_velocity()
+        try:
+            car.update_velocity()
+        except ConnectionResetError:
+            pass
     for car in cars:
         lane = road[car.lane]
         lane[car.location % len(lane)] = None
@@ -92,7 +95,7 @@ class SolutionVehicle():
     def __init__(self, socket, road):
         self.socket = socket
 
-        msg = self.receive_msg()
+        msg = self.receive_msg('init')
         self.lane = msg['lane']
         self.location = msg['location']
         self.velocity = msg['velocity']
@@ -104,22 +107,29 @@ class SolutionVehicle():
         road[self.lane][self.location] = self
         self.road = road
 
-    def receive_msg(self):
+    def receive_msg(self, command):
         # TODO Ensure the entire message was received.
+        self.socket.sendall(command.encode())
         msg = self.socket.recv(1024)
         return json.loads(msg.decode('utf-8'))
 
-    def notify(self, msg):
+    def notify(self, msg, command):
         '''Delivers a broadcast message that the solution would have received -
         one that was sent by another vehicle in range.'''
+        # if command != 'rec_vel':
+        self.socket.sendall(command.encode())
         self.socket.sendall(bytes(json.dumps(msg), 'utf-8'))
 
     def update_velocity(self):
-        msg = self.receive_msg()
+        msg = self.receive_msg('rec_vel')
+        print(msg)
         self.velocity = msg['velocity']
 
     def move(self):
         self.location = (self.location + self.velocity) % ROAD_LENGTH
+
+# def test_connection_state():
+
 
 def main(run_time):
     road = make_road(NUM_LANES, ROAD_LENGTH)
@@ -149,7 +159,7 @@ def main(run_time):
     step_count = 0
 
     while step_count <= run_time:
-        time.sleep(1)
+        time.sleep(2)
 
         # Share broadcast messages with all other vehicles in range.
 
@@ -158,14 +168,28 @@ def main(run_time):
         # Start by collecting all messages that will be delivered to each
         # solution vehicle.
         for sv in solution_vehicles:
-            msg = sv.receive_msg()
-            # print('DBG Received broadcast:{}'.format(msg))
-            for offset in range(1, BROADCAST_RANGE + 1):
-                for offset in (offset, -offset):
-                    for lane in range(NUM_LANES):
-                        location = (sv.location * 2 + offset) % len(road[lane])
-                        if road[lane][location] is not None:
-                            to_notify[(lane, location)].append(msg)
+            try:
+                msg = sv.receive_msg('location')
+                print(msg)
+                # print('DBG Received broadcast:{}'.format(msg))
+                for offset in range(1, BROADCAST_RANGE + 1):
+                    for offset in (offset, -offset):
+                        for lane in range(NUM_LANES):
+                            location = (sv.location * 2 + offset) % len(road[lane])
+                            if road[lane][location] is not None:
+                                to_notify[(lane, location)].append(msg)
+            except ValueError:
+                # Remove the vehicle from car list and road
+                index = cars.index(sv)
+                cars.remove(sv)
+                road[sv.lane][sv.location] = None
+
+                # Create non-solution vehicle and insert it in same pos as
+                # the old vehicle, with the same char id
+                new_car = Car(road, sv.lane, sv.location, sv.velocity)
+                cars.insert(index, new_car)
+                carnames[new_car] = carnames[sv]
+                solution_vehicles.remove(sv)
 
         # Deliver all collected messages along with the amount of free space
         # ahead.
@@ -182,7 +206,7 @@ def main(run_time):
             velocity_ahead = car_ahead.velocity
             space_one_ahead = space_ahead(road, car_ahead.lane, car_ahead.location)
             car.notify({'space_ahead': space, 'velocity_ahead': velocity_ahead, 
-                'space_one_ahead': space_one_ahead, 'msgs': to_notify[coords]})
+                'space_one_ahead': space_one_ahead, 'msgs': to_notify[coords]}, 'velocity')
 
         step(road, cars)
         step_count += 1
