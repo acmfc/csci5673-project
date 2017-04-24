@@ -30,7 +30,7 @@ def space_ahead(road, lane, location):
     return ret
 
 class Car():
-    def __init__(self, road, lane, location, velocity):
+    def __init__(self, road, lane, location, velocity, vel_tracker=None):
         if road[lane][location] is not None:
             raise ValueError('Requested location is already occupied')
 
@@ -38,7 +38,10 @@ class Car():
         self.location = location
         self.velocity = velocity
         self.road = road
-        self.vel_tracker = []
+        if vel_tracker is None:
+            self.vel_tracker = []
+        else:
+            self.vel_tracker = vel_tracker
 
         road[lane][location] = self
 
@@ -71,10 +74,7 @@ class Car():
 def step(road, cars):
     '''Run one step in the Nagel-Schreckenberg model.'''
     for car in cars:
-        try:
-            car.update_velocity()
-        except ConnectionResetError:
-            pass
+        car.update_velocity()
     for car in cars:
         lane = road[car.lane]
         lane[car.location % len(lane)] = None
@@ -109,26 +109,32 @@ class SolutionVehicle():
 
     def receive_msg(self, command):
         # TODO Ensure the entire message was received.
-        self.socket.sendall(command.encode())
-        msg = self.socket.recv(1024)
-        return json.loads(msg.decode('utf-8'))
+        try:
+            if command is not 'pass':
+                self.socket.sendall(command.encode('utf-8'))
+
+            msg = self.socket.recv(1024)
+            return json.loads(msg.decode('utf-8'))
+        except ConnectionResetError:
+            print('Lost connection to SV at {}'.format(self.socket))
 
     def notify(self, msg, command):
         '''Delivers a broadcast message that the solution would have received -
         one that was sent by another vehicle in range.'''
-        # if command != 'rec_vel':
-        self.socket.sendall(command.encode())
-        self.socket.sendall(bytes(json.dumps(msg), 'utf-8'))
+        try:
+            self.socket.sendall(command.encode('utf-8'))
+            if command is 'velocity':
+                self.socket.recv(1024).decode('utf-8')
+                self.socket.sendall(bytes(json.dumps(msg), 'utf-8'))
+        except ConnectionResetError:
+            print('Lost connection to SV at {}'.format(self.socket))
 
     def update_velocity(self):
         msg = self.receive_msg('rec_vel')
-        print(msg)
         self.velocity = msg['velocity']
 
     def move(self):
         self.location = (self.location + self.velocity) % ROAD_LENGTH
-
-# def test_connection_state():
 
 
 def main(run_time):
@@ -159,7 +165,7 @@ def main(run_time):
     step_count = 0
 
     while step_count <= run_time:
-        time.sleep(2)
+        time.sleep(1)
 
         # Share broadcast messages with all other vehicles in range.
 
@@ -170,7 +176,6 @@ def main(run_time):
         for sv in solution_vehicles:
             try:
                 msg = sv.receive_msg('location')
-                print(msg)
                 # print('DBG Received broadcast:{}'.format(msg))
                 for offset in range(1, BROADCAST_RANGE + 1):
                     for offset in (offset, -offset):
@@ -186,7 +191,7 @@ def main(run_time):
 
                 # Create non-solution vehicle and insert it in same pos as
                 # the old vehicle, with the same char id
-                new_car = Car(road, sv.lane, sv.location, sv.velocity)
+                new_car = Car(road, sv.lane, sv.location, sv.velocity, sv.vel_tracker)
                 cars.insert(index, new_car)
                 carnames[new_car] = carnames[sv]
                 solution_vehicles.remove(sv)

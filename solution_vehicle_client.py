@@ -19,18 +19,19 @@ def main(lane, location, velocity):
     while True:
         # This is a bad way to synchronize the client and server. Come up with a
         # better way to delimit messages.
-        time.sleep(0.1)
+        # time.sleep(0.1)
 
-        # Need to separate server message requests
-        server_req = sock.recv(1024).decode()
+        server_req = sock.recv(1024).decode('utf-8')
 
         if server_req == 'location':
             # Broadcast current status.
             sock.sendall(bytes(json.dumps((lane, location)), 'utf-8'))
         elif server_req == 'velocity':
             # Receive other broadcast messages.
+            # Acknowledge velocity request
+            sock.sendall('ready to receive'.encode('utf-8'))
             msg = json.loads(sock.recv(1024).decode('utf-8'))
-            print('space_ahead: {}, msgs: {}'.format(msg['space_ahead'], msg['msgs']))
+            # print('space_ahead: {}, msgs: {}'.format(msg['space_ahead'], msg['msgs']))
             # Extended NS model
             if velocity < MAX_VELOCITY:
                 velocity += 1
