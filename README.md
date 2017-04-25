@@ -25,3 +25,12 @@ To make the solution vehicles consistent with the initial spacing of a model wit
 
 The server runs two lanes, one densely populated and one with a single vehicle
 to demonstrate phantom traffic jams.
+
+Running the UI:
+```shell
+    $ python3 -m http.server 8080
+    $ python -u traffic_model.py --run=10000 | python ui_adapter.py --num_cars=4
+```
+
+Direct a browser to localhost:8080/ui_adapter_demo.html.
+

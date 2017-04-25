@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>UI adapter demo</title>
+<script type="text/javascript">
+window.addEventListener('load', refresh, false);
+
+function refresh() {
+    setTimeout(refresh, 1000);
+    var x = new XMLHttpRequest();
+    x.onreadystatechange = function() {
+        document.getElementById('output').innerHTML = this.responseText;
+    };
+    document.getElementById('output').innerHTML = 'waiting on output';
+    x.open('GET', 'lane_state', true);
+    x.send();
+}
+
+</script>
+</head>
+
+<body>
+    <p id='output'>init output</p>
+</body>
+
+</html>
