@@ -1,32 +1,44 @@
 import json
 import socket
+import threading
 
 from driver_constants import *
+from message import *
 
 
 class SolutionVehicle():
-    '''Interface for networked solution vehicles.'''
 
-    def __init__(self, socket, road):
+    def __init__(self, socket):
         self.socket = socket
 
-        msg = self.receive_msg('init')
-        self.road_lane = msg['lane']
-        self.road_index = msg['location']
-        self.velocity = msg['velocity']
-        self.vel_tracker = []
+        self.road_lane
+        self.road_index
+        self.velocity
+        self.vel_tracker
+        self.broadcast_handler
 
-        if road[self.road_lane][self.road_index] is not None:
-            raise ValueError('Requested location is already occupied')
-
-        road[self.road_lane][self.road_index] = self
-        self.road = road
+    def set_broadcast_handler(self, handler):
+        self.broadcast_handler = handler
 
     def set_location(self, road_lane, road_index):
         self.road_lane = road_lane
         self.road_index = road_index
 
+    def start(self):
+        self.recv_thread = threading.Thread()
+        self.send_thread = threading.Thread()
+
+
+        #send info to client
+
+    def send_data(self):
+
+
+    def recv_data(self):
+
+
     def receive_msg(self, command):
+        '''
         # TODO Ensure the entire message was received.
         try:
             if command is not 'pass':
@@ -36,6 +48,12 @@ class SolutionVehicle():
             return json.loads(msg.decode('utf-8'))
         except ConnectionResetError:
             print('Lost connection to SV at {}'.format(self.socket))
+        '''
+
+        if command == CMD_BROADCAST:
+            self.handle_broadcast(self, command)
+
+        elif command ==
 
     def notify(self, msg, command):
         '''Delivers a broadcast message that the solution would have received -

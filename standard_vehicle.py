@@ -4,20 +4,18 @@ from driver_constants import *
 
 
 class StandardVehicle():
-    def __init__(self, road, lane, location, velocity, vel_tracker=None):
-        if road[lane][location] is not None:
-            raise ValueError('Requested location is already occupied')
+    def __init__(self, velocity, vel_tracker=[]):
+        #if road[road_lane][road_index] is not None:
+        #    raise ValueError('Requested location is already occupied')
 
-        self.road_lane = lane
-        self.road_index = location
+        self.road
+        self.road_lane
+        self.road_index
         self.velocity = velocity
-        self.road = road
-        if vel_tracker is None:
-            self.vel_tracker = []
-        else:
-            self.vel_tracker = vel_tracker
 
-        road[lane][location] = self
+        self.vel_tracker = vel_tracker
+
+        #road[lane][location] = self
 
     def set_location(self, road_lane, road_index):
         self.road_lane = road_lane

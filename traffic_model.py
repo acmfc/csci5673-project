@@ -8,27 +8,49 @@ from standard_vehicle import StandardVehicle
 from solution_vehicle import SolutionVehicle
 
 
-ROAD_LENGTH = 0
-TRAFFIC_DENSITY = 0
-SOLUTION_DENSITY = 0
-
-BROADCAST_RANGE = 0
+BROADCAST_RANGE = 15
 
 
-def initialize_vehicles(listener):
-    vehicles = []
+class BroadcastHandler:
+    def __int__(self, dictionary):
+        self.solution_vehicle_socket_dict = dictionary
+
+    def handle_broadcast(self, source_vehicle, command):
+        to_notify = []
+
+        for sv in self.solution_vehicle_socket_dict.keys():
+
+
+            if sv != source_vehicle:
+
+                # sv.notify()
+
+                pass
+
+
+def initialize_vehicles(listener, num_solution_v, traffic_density):
+    total_vehicle_count = round(ROAD_LENGTH * traffic_density)
+
+    solution_vehicle_socket_dict = {}
     solution_vehicles = []
-
-    num_standard = round(ROAD_LENGTH * TRAFFIC_DENSITY)
-    for i in range(num_standard):
-        solution_vehicle = StandardVehicle(None, None, None, 5)
-        vehicles.append(solution_vehicle)
-        solution_vehicles.append(solution_vehicle)
-
-    num_solution = round(ROAD_LENGTH * TRAFFIC_DENSITY * SOLUTION_DENSITY)
-    for _ in range(num_solution):
+    for i in range(num_solution_v):
         sock, _ = listener.accept()
-        vehicles.append(SolutionVehicle(sock, None))
+        sv = SolutionVehicle(sock)
+
+        solution_vehicles.append(sv)
+
+        solution_vehicle_socket_dict[sv] = sock
+
+    broadcast_handler = BroadcastHandler(solution_vehicle_socket_dict)
+
+    for sv in solution_vehicles:
+        sv.set_broadcast_handler(broadcast_handler)
+
+    vehicles = []
+    for i in range(total_vehicle_count - num_solution_v):
+        vehicles.append(StandardVehicle(5))
+
+    vehicles.extend(solution_vehicles)
 
     random.shuffle(vehicles)
 
@@ -87,28 +109,14 @@ def print_road(road, carnames):
     print('')
 
 
-def main(run_time):
+def main(run_time, traffic_density, num_solution_v):
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.bind(('localhost', 8000))
     listener.listen()
 
-    '''
-    solution_vehicles = []
-    for _ in range(NUM_SOLUTION_VEHICLES):
-        sock, _ = listener.accept()
-        solution_vehicles.append(SolutionVehicle(sock, road))
-
-    car_count = round(ROAD_LENGTH * DENSITY)
-    interval = round(ROAD_LENGTH / car_count)
-    cars = []
-
-    for i in range(NUM_SOLUTION_VEHICLES * interval, ROAD_LENGTH, interval):
-        cars.append(StandardVehicle(road, 0, i, 5))
-
-    cars.extend(solution_vehicles)
-    '''
-
-    vehicle_list, solution_vehicles = initialize_vehicles(listener)
+    vehicle_list, solution_vehicles = initialize_vehicles(listener,
+                                                          num_solution_v,
+                                                          traffic_density)
 
     road = initialize_road(vehicle_list)
 
@@ -117,8 +125,6 @@ def main(run_time):
     carnames = {car: next(ids) for car in vehicle_list}
 
     print_road(road, carnames)
-
-
 
     step_count = 0
     while step_count <= run_time:
@@ -182,18 +188,10 @@ def main(run_time):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--run_time', type=int, default=15)
-    parser.add_argument('--solution_density', type=float, required=True)
-    parser.add_argument('--traffic_density', type=float, required=True)
+    parser.add_argument('-r', type=int, default=15)
+    parser.add_argument('-t', type=float, required=True)
+    parser.add_argument('-s', type=float, required=True)
+
     args = parser.parse_args()
 
-    global RUN_TIME
-    RUN_TIME = args.run
-
-    global TRAFFIC_DENSITY
-    TRAFFIC_DENSITY = args.traffic_density
-
-    global SOLUTION_DENSITY
-    SOLUTION_DENSITY = args.solution_density
-
-    main()
+    main(args.r, args.t, args.s)
