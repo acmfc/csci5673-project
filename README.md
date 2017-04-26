@@ -28,9 +28,9 @@ to demonstrate phantom traffic jams.
 
 Running the UI:
 ```shell
-    $ python3 -m http.server 8080
-    $ python -u traffic_model.py --run=10000 | python ui_adapter.py --num_cars=4
+    $ python ui_server.py
+    $ python -u traffic_model.py --run=10000 | python ui_adapter.py --num_cars=10
 ```
 
-Direct a browser to localhost:8080/ui_adapter_demo.html.
+Direct a browser to localhost:8081/ui_adapter_demo.html.
 
