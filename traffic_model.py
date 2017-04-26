@@ -85,8 +85,8 @@ def step(road, cars):
         car.vel_tracker.append(car.velocity)
 
 def print_road(road, carnames):
-    for lane in road:
-        print(' '.join(
+    for i,lane in enumerate(road):
+        print('lane{} '.format(i) + ' '.join(
             carnames[car] if car is not None else '_' for car in lane))
     print('')
 
@@ -157,6 +157,9 @@ def main(run_time):
                 range(NUM_SOLUTION_VEHICLES * interval, ROAD_LENGTH, interval)]
     # cars.append(Car(road, 1, 0, 5))
     cars.extend(solution_vehicles)
+
+    cars.extend([Car(road, 1, i, 5) for i in
+        range(NUM_SOLUTION_VEHICLES * interval, ROAD_LENGTH, interval)])
 
     #ids = (chr(i) for i in range(ord('0'), ord('~')))
     ids = (str(i) for i in range(ROAD_LENGTH))
