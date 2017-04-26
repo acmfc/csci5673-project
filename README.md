@@ -29,7 +29,7 @@ to demonstrate phantom traffic jams.
 Running the UI:
 ```shell
     $ python ui_server.py
-    $ python -u traffic_model.py --run=10000 | python ui_adapter.py --num_cars=10
+    $ python -u traffic_model.py --run=10000 | python ui_adapter.py
 ```
 
 Direct a browser to localhost:8081/ui_adapter_demo.html.
