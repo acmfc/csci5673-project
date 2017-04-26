@@ -1,10 +1,11 @@
 from driver_constants import *
+
+import argparse
 import json
+import random
 import random
 import socket
 import time
-import argparse
-import random
 
 # NUM_SOLUTION_VEHICLES = 0
 BROADCAST_RANGE = 15 # The range of broadcast messages in cells.
@@ -157,7 +158,8 @@ def main(run_time):
     # cars.append(Car(road, 1, 0, 5))
     cars.extend(solution_vehicles)
 
-    ids = (chr(i) for i in range(ord('0'), ord('~')))
+    #ids = (chr(i) for i in range(ord('0'), ord('~')))
+    ids = (str(i) for i in range(ROAD_LENGTH))
     carnames = {car: next(ids) for car in cars}
 
     print_road(road, carnames)

@@ -5,17 +5,70 @@
 <meta charset="UTF-8">
 <title>UI adapter demo</title>
 <script type="text/javascript">
-window.addEventListener('load', refresh, false);
+window.addEventListener('load', function() {
+    setInterval(refresh, 500);
+    window.requestAnimationFrame(draw);
+    refresh();
+}, false);
+
+var carData = {road_length: 0, positions: {}}
 
 function refresh() {
-    setTimeout(refresh, 1000);
     var x = new XMLHttpRequest();
     x.onreadystatechange = function() {
-        document.getElementById('output').innerHTML = this.responseText;
+        carData = JSON.parse(this.responseText);
+        document.getElementById('output').innerHTML = carData;
     };
-    document.getElementById('output').innerHTML = 'waiting on output';
+    //document.getElementById('output').innerHTML = 'waiting on output';
     x.open('GET', 'lane_state', true);
     x.send();
+}
+
+function drawCircle(center, radius, color, context) {
+    context.save();
+    context.fillStyle = color;
+    context.beginPath();
+    context.arc(center.x, center.y, radius, 0, Math.PI * 2, true);
+    context.closePath();
+    context.fill();
+    context.restore();
+}
+
+function drawCar(center, color, context) {
+    drawCircle(center, 10, color, context);
+}
+
+function drawCarOnPath(angle, color, path, context) {
+    var pos = {
+        x: path.center.x + Math.cos(angle) * path.radius,
+        y: path.center.y + Math.sin(angle) * path.radius
+    };
+    drawCar(pos, color, context);
+}
+
+function drawBox(context, width, height) {
+    context.save();
+    context.fillStyle = '#EEEEEE';
+    context.fillRect(0, 0, width, height);
+    context.strokeStyle = '#000000';
+    context.strokeRect(1, 1, width - 2, height - 2);
+    context.restore();
+}
+
+function draw() {
+    var path = {center: {x: 250, y: 250}, radius: 125}
+    var lane = document.getElementById('lane1');
+    var context = lane.getContext('2d');
+
+    drawBox(context, lane.width, lane.height);
+
+    for (key in carData.positions) {
+        var angle = (carData.positions[key] / carData.road_length) * 2 * Math.PI;
+        var color = key === '0' ? '#FF0000' : '#000000';
+        drawCarOnPath(angle, color, path, context);
+    }
+
+    window.requestAnimationFrame(draw);
 }
 
 </script>
@@ -23,6 +76,7 @@ function refresh() {
 
 <body>
     <p id='output'>init output</p>
+    <canvas id="lane1" width="500" height="500">
 </body>
 
 </html>
