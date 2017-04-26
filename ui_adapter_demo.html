@@ -21,9 +21,7 @@ function refresh() {
         } catch(e) {
             //console.log(e);
         }
-        document.getElementById('output').innerHTML = JSON.stringify(carData);
     };
-    //document.getElementById('output').innerHTML = 'waiting on output';
     x.open('GET', 'lane_state', true);
     x.send();
 }
@@ -60,11 +58,12 @@ function drawBox(context, width, height) {
 }
 
 function draw() {
-    var path = {center: {x: 250, y: 250}, radius: 125}
     var lane0 = document.getElementById('lane0');
     var lane1 = document.getElementById('lane1');
     var context0 = lane0.getContext('2d');
     var context1 = lane1.getContext('2d');
+
+    var path = {center: {x: lane0.width / 2, y: lane0.height / 2}, radius: lane0.width / 4}
 
     drawBox(context0, lane0.width, lane0.height);
     drawBox(context1, lane1.width, lane1.height);
@@ -92,9 +91,8 @@ function draw() {
 </head>
 
 <body>
-    <p id='output'>init output</p>
-    <canvas id="lane0" width="500" height="500"></canvas>
-    <canvas id="lane1" width="500" height="500"></canvas>
+    <canvas id="lane0" width="600" height="600" style="float:left;"></canvas>
+    <canvas id="lane1" width="600" height="600" style="float:left;"></canvas>
 </body>
 
 </html>

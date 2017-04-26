@@ -72,6 +72,10 @@ class Car():
         these.'''
         pass
 
+class PerfectCar(Car):
+    def randomize(self):
+        pass
+
 def step(road, cars):
     '''Run one step in the Nagel-Schreckenberg model.'''
     for car in cars:
@@ -158,7 +162,7 @@ def main(run_time):
     # cars.append(Car(road, 1, 0, 5))
     cars.extend(solution_vehicles)
 
-    cars.extend([Car(road, 1, i, 5) for i in
+    cars.extend([PerfectCar(road, 1, i, 5) for i in
         range(NUM_SOLUTION_VEHICLES * interval, ROAD_LENGTH, interval)])
 
     #ids = (chr(i) for i in range(ord('0'), ord('~')))
