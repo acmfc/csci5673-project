@@ -17,7 +17,7 @@ def make_road(num_lanes, length):
     # for each lane.
     return [[None for _ in range(length)] for _ in range(num_lanes)]
 
-def space_ahead(road, lane, location):
+def  space_ahead(road, lane, location):
     '''Returns the number of free cells in front of the current location.
     If there are more than MAX_VELOCITY cells, returns MAX_VELOCITY.'''
     ret = 0
@@ -86,11 +86,14 @@ def step(road, cars):
         prev_loc = car.location
 
         car.move()
-
+        # print('previous: {} {}'.format((car.lane, prev_loc), road[car.lane][prev_loc]))
         if lane[car.location % len(lane)] is not None:
+            # print('new loc: {} {}'.format((car.lane, car.location), road[car.lane][car.location]))
             tmp_list = []
             tmp_list.append(lane[car.location % len(lane)])
             tmp_list.append(car)
+            road[car.lane][car.location] = tmp_list
+            # print('cur_list: {} {} {}'.format((car.lane, car.location), road[car.lane][car.location], tmp_list))
         else:
             lane[car.location % len(lane)] = car
 
@@ -104,11 +107,12 @@ def step(road, cars):
         else:
             lane[prev_loc % len(lane)] = None
 
+        # print('previous after completion: {} {}'.format((car.lane, prev_loc), road[car.lane][prev_loc]))
         car.vel_tracker.append(car.velocity)
 
 def print_road(road, carnames):
     for i,lane in enumerate(road):
-        print('{} '.format(i) + ' '.join(
+        print(''.format(i) + ' '.join(
             carnames[car] if car is not None else '_' for car in lane))
     print('')
 
@@ -180,8 +184,8 @@ def main(run_time):
     # cars.append(Car(road, 1, 0, 5))
     cars.extend(solution_vehicles)
 
-    cars.extend([PerfectCar(road, 1, i, 5) for i in
-        range(NUM_SOLUTION_VEHICLES * interval, ROAD_LENGTH, interval)])
+    # cars.extend([PerfectCar(road, 1, i, 5) for i in
+        # range(NUM_SOLUTION_VEHICLES * interval, ROAD_LENGTH, interval)])
 
     ids = (chr(i) for i in range(ord('0'), ord('~')))
     # ids = (str(i) for i in range(ROAD_LENGTH))
@@ -197,7 +201,7 @@ def main(run_time):
         # Share broadcast messages with all other vehicles in range.
 
         to_notify = {(car.lane, car.location): [] for car in cars}
-        print('to_notify: {}'.format(to_notify))
+        # print('to_notify: {}'.format(to_notify))
         # Start by collecting all messages that will be delivered to each
         # solution vehicle.
         for sv in solution_vehicles:
