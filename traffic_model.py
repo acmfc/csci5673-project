@@ -225,6 +225,10 @@ def main(run_time):
         step(road, cars)
         step_count += 1
         print_road(road, carnames)
+        for i in range(NUM_LANES):
+            cars_in_lane = [car for car in cars if car.lane == i]
+            total_distance = sum(sum(car.vel_tracker) for car in cars_in_lane)
+            print('avg{} {}'.format(i, (total_distance / step_count) / len(cars_in_lane)))
 
     total_distance = 0
     for car in cars:

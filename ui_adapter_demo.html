@@ -7,6 +7,7 @@
 <script type="text/javascript">
 window.addEventListener('load', function() {
     setInterval(refresh, 1000);
+    setInterval(function() { window.requestAnimationFrame(draw); }, 50);
     window.requestAnimationFrame(draw);
     refresh();
 }, false);
@@ -18,6 +19,7 @@ function refresh() {
     x.onreadystatechange = function() {
         try {
             carData = JSON.parse(this.responseText);
+            //console.log('carData: ' + JSON.stringify(carData));
         } catch(e) {
             //console.log(e);
         }
@@ -40,12 +42,13 @@ function drawCar(center, color, context) {
     drawCircle(center, 10, color, context);
 }
 
-function drawCarOnPath(angle, color, path, context) {
-    var pos = {
-        x: path.center.x + Math.cos(angle) * path.radius,
-        y: path.center.y + Math.sin(angle) * path.radius
+function drawCarOnPath(pos, color, path, context) {
+    var stepSize = path.maxX / path.roadLength;
+    var coords = {
+        x: 5 + pos * stepSize,
+        y: path.y
     };
-    drawCar(pos, color, context);
+    drawCar(coords, color, context);
 }
 
 function drawBox(context, width, height) {
@@ -63,36 +66,44 @@ function draw() {
     var context0 = lane0.getContext('2d');
     var context1 = lane1.getContext('2d');
 
-    var path = {center: {x: lane0.width / 2, y: lane0.height / 2}, radius: lane0.width / 4}
+    // Assume all lanes have the same length.
+    var path = {y: lane0.height / 2, maxX: lane0.width - 10,
+        roadLength: '0' in carData ? carData['0']['road_length'] : 0};
 
     drawBox(context0, lane0.width, lane0.height);
     drawBox(context1, lane1.width, lane1.height);
 
+    if ('avg0' in carData) {
+        document.getElementById('avg-velocity-0').innerHTML = 'Average velocity: ' + carData['avg0'];
+    }
+
+    if ('avg1' in carData) {
+        document.getElementById('avg-velocity-1').innerHTML = 'Average velocity: ' + carData['avg1'];
+    }
+
     if ('0' in carData) {
         for (key in carData['0'].positions) {
-            var angle = (carData['0'].positions[key] / carData['0'].road_length) * 2 * Math.PI;
             var color = key === '0' ? '#FF0000' : '#000000';
-            drawCarOnPath(angle, color, path, context0);
+            drawCarOnPath(carData['0'].positions[key], color, path, context0);
         }
     }
 
     if ('1' in carData) {
         for (key in carData['1'].positions) {
-            var angle = (carData['1'].positions[key] / carData['1'].road_length) * 2 * Math.PI;
             var color = key === '10' ? '#0000FF' : '#000000';
-            drawCarOnPath(angle, color, path, context1);
+            drawCarOnPath(carData['1'].positions[key], color, path, context1);
         }
     }
-
-    window.requestAnimationFrame(draw);
 }
 
 </script>
 </head>
 
 <body>
-    <canvas id="lane0" width="600" height="600" style="float:left;"></canvas>
-    <canvas id="lane1" width="600" height="600" style="float:left;"></canvas>
+    <canvas id="lane0" width="1000" height="100"></canvas>
+    <p id="avg-velocity-0" style="font-size: 22pt;">Average velocity: 0</p>
+    <canvas id="lane1" width="1000" height="100"></canvas>
+    <p id="avg-velocity-1" style="font-size: 22pt;">Average velocity: 0</p>
 </body>
 
 </html>
