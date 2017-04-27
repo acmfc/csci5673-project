@@ -39,6 +39,7 @@ def main(lane, location, velocity):
                 velocity_pred = max(min(msg['space_one_ahead'] - 1, 
                     msg['velocity_ahead'], MAX_VELOCITY-1), 0)
                 print('velp: {}, velp+sa: {}, vel: {}'.format(velocity_pred, velocity_pred+msg['space_ahead'], velocity))
+                print('[{}]{}[{}]{}'.format(velocity, '_' * int(msg["space_ahead"]), msg["velocity_ahead"], '_' * int(msg["space_one_ahead"])))
                 velocity = min(velocity, velocity_pred + msg['space_ahead'])
             if velocity >= 1 and random.uniform(0, 1) < PROBABILITY_DECELERATE:
                 velocity -= 1

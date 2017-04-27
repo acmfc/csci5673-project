@@ -82,10 +82,28 @@ def step(road, cars):
         car.update_velocity()
     for car in cars:
         lane = road[car.lane]
-        lane[car.location % len(lane)] = None
+
+        prev_loc = car.location
+
         car.move()
-        lane = road[car.lane]
-        lane[car.location % len(lane)] = car
+
+        if lane[car.location % len(lane)] is not None:
+            tmp_list = []
+            tmp_list.append(lane[car.location % len(lane)])
+            tmp_list.append(car)
+        else:
+            lane[car.location % len(lane)] = car
+
+        if type(road[car.lane][prev_loc]) is list:
+            prev_list = road[car.lane][prev_loc]
+            prev_list.remove(car)
+
+            other_car = prev_list[0]
+            road[car.lane][prev_loc] = other_car
+
+        else:
+            lane[prev_loc % len(lane)] = None
+
         car.vel_tracker.append(car.velocity)
 
 def print_road(road, carnames):
@@ -187,11 +205,10 @@ def main(run_time):
                 msg = sv.receive_msg('location')
                 # print('DBG Received broadcast:{}'.format(msg))
                 for offset in range(1, BROADCAST_RANGE + 1):
-                    for offset in (offset, -offset):
-                        for lane in range(NUM_LANES):
-                            location = (sv.location * 2 + offset) % len(road[lane])
-                            if road[lane][location] is not None:
-                                to_notify[(lane, location)].append(msg)
+                    loc_ahead = (sv.location + offset) % ROAD_LENGTH
+                    if road[0][loc_ahead] is not None and isinstance(road[0][offset], SolutionVehicle):
+                        to_notify[(0, loc_ahead)].append(msg)
+
             except ValueError:
                 # Remove the vehicle from car list and road
                 index = cars.index(sv)
