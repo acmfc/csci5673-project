@@ -90,7 +90,7 @@ def step(road, cars):
 
 def print_road(road, carnames):
     for i,lane in enumerate(road):
-        print('lane{} '.format(i) + ' '.join(
+        print('{} '.format(i) + ' '.join(
             carnames[car] if car is not None else '_' for car in lane))
     print('')
 
@@ -165,8 +165,8 @@ def main(run_time):
     cars.extend([PerfectCar(road, 1, i, 5) for i in
         range(NUM_SOLUTION_VEHICLES * interval, ROAD_LENGTH, interval)])
 
-    #ids = (chr(i) for i in range(ord('0'), ord('~')))
-    ids = (str(i) for i in range(ROAD_LENGTH))
+    ids = (chr(i) for i in range(ord('0'), ord('~')))
+    # ids = (str(i) for i in range(ROAD_LENGTH))
     carnames = {car: next(ids) for car in cars}
 
     print_road(road, carnames)
