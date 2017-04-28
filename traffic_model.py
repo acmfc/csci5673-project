@@ -86,14 +86,12 @@ def step(road, cars):
         prev_loc = car.location
 
         car.move()
-        # print('previous: {} {}'.format((car.lane, prev_loc), road[car.lane][prev_loc]))
+
         if lane[car.location % len(lane)] is not None:
-            # print('new loc: {} {}'.format((car.lane, car.location), road[car.lane][car.location]))
             tmp_list = []
             tmp_list.append(lane[car.location % len(lane)])
             tmp_list.append(car)
             road[car.lane][car.location] = tmp_list
-            # print('cur_list: {} {} {}'.format((car.lane, car.location), road[car.lane][car.location], tmp_list))
         else:
             lane[car.location % len(lane)] = car
 
@@ -107,7 +105,6 @@ def step(road, cars):
         else:
             lane[prev_loc % len(lane)] = None
 
-        # print('previous after completion: {} {}'.format((car.lane, prev_loc), road[car.lane][prev_loc]))
         car.vel_tracker.append(car.velocity)
 
 def print_road(road, carnames):
@@ -187,8 +184,8 @@ def main(run_time):
     # cars.extend([PerfectCar(road, 1, i, 5) for i in
         # range(NUM_SOLUTION_VEHICLES * interval, ROAD_LENGTH, interval)])
 
-    ids = (chr(i) for i in range(ord('0'), ord('~')))
-    # ids = (str(i) for i in range(ROAD_LENGTH))
+    # ids = (chr(i) for i in range(ord('0'), ord('~')))
+    ids = (str(i) for i in range(ROAD_LENGTH))
     carnames = {car: next(ids) for car in cars}
 
     print_road(road, carnames)
@@ -196,7 +193,7 @@ def main(run_time):
     step_count = 0
 
     while step_count <= run_time:
-        time.sleep(1)
+        time.sleep(0.1)
 
         # Share broadcast messages with all other vehicles in range.
 
