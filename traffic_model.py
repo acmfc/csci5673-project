@@ -6,6 +6,7 @@ import random
 import random
 import socket
 import time
+import _pickle as pickle
 
 # NUM_SOLUTION_VEHICLES = 0
 BROADCAST_RANGE = 15 # The range of broadcast messages in cells.
@@ -39,6 +40,7 @@ class Car():
         self.location = location
         self.velocity = velocity
         self.road = road
+        self.space = 0
         if vel_tracker is None:
             self.vel_tracker = []
         else:
@@ -57,6 +59,7 @@ class Car():
 
     def decelerate(self):
         space = space_ahead(self.road, self.lane, self.location)
+        self.space = space
         if space < self.velocity:
             self.velocity = space
 
@@ -124,6 +127,7 @@ class SolutionVehicle():
         self.location = msg['location']
         self.velocity = msg['velocity']
         self.vel_tracker = []
+        self.space = 0
 
         if road[self.lane][self.location] is not None:
             raise ValueError('Requested location is already occupied')
@@ -188,6 +192,11 @@ def main(run_time):
     ids = (str(i) for i in range(ROAD_LENGTH))
     carnames = {car: next(ids) for car in cars}
 
+    # Initialize starting position space ahead
+    for car in cars:
+        space = space_ahead(road, car.lane, car.location)
+        car.space = space
+
     print_road(road, carnames)
 
     step_count = 0
@@ -198,17 +207,15 @@ def main(run_time):
         # Share broadcast messages with all other vehicles in range.
 
         to_notify = {(car.lane, car.location): [] for car in cars}
-        # print('to_notify: {}'.format(to_notify))
         # Start by collecting all messages that will be delivered to each
         # solution vehicle.
         for sv in solution_vehicles:
             try:
                 msg = sv.receive_msg('location')
-                # print('DBG Received broadcast:{}'.format(msg))
                 for offset in range(1, BROADCAST_RANGE + 1):
                     loc_ahead = (sv.location + offset) % ROAD_LENGTH
                     if road[0][loc_ahead] is not None and isinstance(road[0][offset], SolutionVehicle):
-                        to_notify[(0, loc_ahead)].append(msg)
+                        to_notify[(0, sv.location)].append(road[0][loc_ahead])
 
             except ValueError:
                 # Remove the vehicle from car list and road
@@ -223,12 +230,13 @@ def main(run_time):
                 carnames[new_car] = carnames[sv]
                 solution_vehicles.remove(sv)
 
+
         # Deliver all collected messages along with the amount of free space
         # ahead.
         for coords in to_notify:
             car = road[coords[0]][coords[1]]
-            space = space_ahead(road, car.lane, car.location)
-            
+            car.space = space_ahead(road, car.lane, car.location)
+
             # Find the next vehicle ahead of the current
             location = (coords[1]+1) % ROAD_LENGTH
             while road[coords[0]][location] is None:
@@ -236,9 +244,31 @@ def main(run_time):
 
             car_ahead = road[coords[0]][location]
             velocity_ahead = car_ahead.velocity
-            space_one_ahead = space_ahead(road, car_ahead.lane, car_ahead.location)
-            car.notify({'space_ahead': space, 'velocity_ahead': velocity_ahead, 
-                'space_one_ahead': space_one_ahead, 'msgs': to_notify[coords]}, 'velocity')
+            space_one_ahead = car_ahead.space
+
+            # Create list of solution vehicles in range and record their params
+            nearby_solution_vehicles = []
+            for vehicle in to_notify[coords]:
+                nearby_solution_vehicles.append({'sv_space': vehicle.space, 
+                    'sv_velocity': vehicle.velocity})
+            # Get the params of the vehicle in front of lead solution veh
+            if to_notify[coords]:
+                lead_sv = to_notify[coords][-1]
+                tmp_loc = (lead_sv.location + 1) % ROAD_LENGTH
+                while road[lead_sv.lane][tmp_loc] is None:
+                    tmp_loc = (tmp_loc + 1) % ROAD_LENGTH
+                car_ahead_lsv = road[lead_sv.lane][tmp_loc]
+                # Add params to dictionary to send to current car
+                nearby_solution_vehicles[-1]['vel_ahead_lsv'] = car_ahead_lsv.velocity
+                nearby_solution_vehicles[-1]['space_ahead_lsv'] = car_ahead_lsv.space
+
+            car.notify(
+                {'space_ahead': car.space, 
+                'velocity_ahead': velocity_ahead, 
+                'space_one_ahead': space_one_ahead, 
+                'sv_list': json.dumps(nearby_solution_vehicles)}, 
+                'velocity')
+
 
         step(road, cars)
         step_count += 1
