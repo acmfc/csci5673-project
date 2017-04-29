@@ -17,6 +17,42 @@ def make_road(num_lanes, length):
     # for each lane.
     return [[None for _ in range(length)] for _ in range(num_lanes)]
 
+
+def initialize_vehicles(road):
+
+    cars = []
+    solution_vehicles = []
+
+    for i in range(NUM_SOLUTION_VEHICLES):
+        cars.append(1)
+
+    total_car_count = round(ROAD_LENGTH * DENSITY)
+
+    for i in range(total_car_count - NUM_SOLUTION_VEHICLES):
+        cars.append(0)
+
+    random.shuffle(cars)
+
+    interval = round(ROAD_LENGTH / total_car_count)
+    loc = 0
+    i = 0
+    for car_type in cars:
+        if car_type == 0:
+            car = Car(road, 0, loc, 5)
+        else:
+            car = SolutionVehicle(0, loc, 5)
+            solution_vehicles.append(car)
+
+        cars[i] = car
+
+        road[0][loc] = car
+
+        loc += interval
+        i += 1
+
+    return cars, solution_vehicles
+
+
 def  space_ahead(road, lane, location):
     '''Returns the number of free cells in front of the current location.
     If there are more than MAX_VELOCITY cells, returns MAX_VELOCITY.'''
@@ -43,8 +79,6 @@ class Car():
             self.vel_tracker = []
         else:
             self.vel_tracker = vel_tracker
-
-        road[lane][location] = self
 
     def update_velocity(self):
         self.accelerate()
@@ -116,20 +150,16 @@ def print_road(road, carnames):
 class SolutionVehicle():
     '''Interface for networked solution vehicles.'''
 
-    def __init__(self, socket, road):
-        self.socket = socket
+    def __init__(self, lane, location, velocity):
+        self.socket = None
 
-        msg = self.receive_msg('init')
-        self.lane = msg['lane']
-        self.location = msg['location']
-        self.velocity = msg['velocity']
+        self.lane = lane
+        self.location = location
+        self.velocity = velocity
         self.vel_tracker = []
 
-        if road[self.lane][self.location] is not None:
-            raise ValueError('Requested location is already occupied')
-
-        road[self.lane][self.location] = self
-        self.road = road
+    def set_socket(self, sock):
+        self.socket = sock
 
     def receive_msg(self, command):
         # TODO Ensure the entire message was received.
@@ -138,7 +168,8 @@ class SolutionVehicle():
                 self.socket.sendall(command.encode('utf-8'))
 
             msg = self.socket.recv(1024)
-            return json.loads(msg.decode('utf-8'))
+            if msg != 'client exiting':
+                return json.loads(msg.decode('utf-8'))
         except ConnectionResetError:
             print('Lost connection to SV at {}'.format(self.socket))
 
@@ -168,18 +199,20 @@ def main(run_time):
     listener.bind(('localhost', 8000))
     listener.listen()
 
-    solution_vehicles = []
-    for _ in range(NUM_SOLUTION_VEHICLES):
+    cars, solution_vehicles = initialize_vehicles(road)
+
+    for sv in solution_vehicles:
         sock, _ = listener.accept()
-        solution_vehicles.append(SolutionVehicle(sock, road))
+        sv.set_socket(sock)
+        #solution_vehicles.append(SolutionVehicle(sock, road))
 
 
-    car_count = round(ROAD_LENGTH * DENSITY)
-    interval = round(ROAD_LENGTH / car_count)
-    cars = [Car(road, 0, i, 5) for i in 
-                range(NUM_SOLUTION_VEHICLES * interval, ROAD_LENGTH, interval)]
+    #car_count = round(ROAD_LENGTH * DENSITY)
+    #interval = round(ROAD_LENGTH / car_count)
+    #cars = [Car(road, 0, i, 5) for i in
+    #            range(NUM_SOLUTION_VEHICLES * interval, ROAD_LENGTH, interval)]
     # cars.append(Car(road, 1, 0, 5))
-    cars.extend(solution_vehicles)
+    #cars.extend(solution_vehicles)
 
     # cars.extend([PerfectCar(road, 1, i, 5) for i in
         # range(NUM_SOLUTION_VEHICLES * interval, ROAD_LENGTH, interval)])
@@ -243,6 +276,11 @@ def main(run_time):
         step(road, cars)
         step_count += 1
         print_road(road, carnames)
+
+    for sv in solution_vehicles:
+        sv.receive_msg('kill')
+
+    listener.close()
 
     total_distance = 0
     for car in cars:
