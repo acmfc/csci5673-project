@@ -200,7 +200,7 @@ def main(run_time):
     road = make_road(NUM_LANES, ROAD_LENGTH)
 
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    listener.bind(('localhost', 8000))
+    listener.bind(('localhost', 9000))
     listener.listen()
 
     cars, solution_vehicles = initialize_vehicles(road)
@@ -230,7 +230,7 @@ def main(run_time):
         space = space_ahead(road, car.lane, car.location)
         car.space = space
 
-    print_road(road, carnames)
+    #print_road(road, carnames)
 
     step_count = 0
 
@@ -305,7 +305,7 @@ def main(run_time):
 
         step(road, cars)
         step_count += 1
-        print_road(road, carnames)
+        #print_road(road, carnames)
 
     for sv in solution_vehicles:
         sv.receive_msg('kill')
@@ -319,6 +319,8 @@ def main(run_time):
     highway_mean_velocity = (total_distance / step_count) / len(cars)
 
     print("Average freeway velocity: {}".format(highway_mean_velocity))
+    print()
+    print()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

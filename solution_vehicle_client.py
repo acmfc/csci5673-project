@@ -9,7 +9,7 @@ import random
 def main(lane, location, velocity):
 
     try:
-        sock = socket.create_connection(('localhost', 8000), 500)
+        sock = socket.create_connection(('localhost', 9000), 500)
     except:
         sys.exit(0)
 
@@ -23,6 +23,7 @@ def main(lane, location, velocity):
             if server_req == 'location':
                 # Broadcast current status.
                 sock.sendall(bytes(json.dumps((lane, location)), 'utf-8'))
+
             elif server_req == 'velocity':
                 # Receive other broadcast messages.
                 # Acknowledge velocity request
