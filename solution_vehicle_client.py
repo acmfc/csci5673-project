@@ -23,32 +23,48 @@ def main(lane, location, velocity):
             if server_req == 'location':
                 # Broadcast current status.
                 sock.sendall(bytes(json.dumps((lane, location)), 'utf-8'))
-
             elif server_req == 'velocity':
                 # Receive other broadcast messages.
                 # Acknowledge velocity request
                 sock.sendall('ready to receive'.encode('utf-8'))
                 msg = json.loads(sock.recv(1024).decode('utf-8'))
+                sv_list = json.loads(msg['sv_list'])
 
-                # Extended NS model
+                velocity_share = velocity
+                velocity_pred = velocity
+
                 if velocity < MAX_VELOCITY:
                     velocity += 1
 
+                # Calculate lead SV velocity
+                if sv_list:
+                    lead_sv = sv_list[-1]
+                    # print('last: {}'.format(msg['sv_list'][-1]['sv_velocity']))
+                    velocity_share = max(min(lead_sv['space_ahead_lsv'] - 1,
+                        lead_sv['vel_ahead_lsv'], MAX_VELOCITY - 1), 0)
+                    for _ in range(len(sv_list)-1):
+                        velocity_share = max(velocity_share - 1, 0)
+
+                # Make prediction for car immediately in front of you
                 if velocity > msg['space_ahead']:
                     velocity_pred = max(min(msg['space_one_ahead'] - 1,
                         msg['velocity_ahead'], MAX_VELOCITY-1), 0)
-                    velocity = min(velocity, velocity_pred + msg['space_ahead'])
 
+                # Set new velocity
+                velocity = min(velocity, velocity_pred + msg['space_ahead'], velocity_share + msg['space_ahead'])
+
+                # Decrease velocity probabilistically
                 if velocity >= 1 and random.uniform(0, 1) < PROBABILITY_DECELERATE:
-                    velocity -= 1
+                    velocity = max(velocity - 1, 0)
 
             elif server_req == 'kill':
-                sock.sendall('client exiting'.encode('utf-8'))
-                sock.close()
-                sys.exit(1)
+                    sock.sendall('client exiting'.encode('utf-8'))
+                    sock.close()
+                    sys.exit(1)
 
             else:
                 sock.sendall(bytes(json.dumps({'velocity': velocity}), 'utf-8'))
+
         except:
             sys.exit(0)
 
