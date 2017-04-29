@@ -40,16 +40,16 @@ def main(lane, location, velocity):
                 # Calculate lead SV velocity
                 if sv_list:
                     lead_sv = sv_list[-1]
-                    # print('last: {}'.format(msg['sv_list'][-1]['sv_velocity']))
                     velocity_share = max(min(lead_sv['space_ahead_lsv'] - 1,
                         lead_sv['vel_ahead_lsv'], MAX_VELOCITY - 1), 0)
+
                     for _ in range(len(sv_list)-1):
                         velocity_share = max(velocity_share - 1, 0)
 
                 # Make prediction for car immediately in front of you
                 if velocity > msg['space_ahead']:
                     velocity_pred = max(min(msg['space_one_ahead'] - 1,
-                        msg['velocity_ahead'], MAX_VELOCITY-1), 0)
+                        msg['velocity_ahead'] - 1, MAX_VELOCITY-1), 0)
 
                 # Set new velocity
                 velocity = min(velocity, velocity_pred + msg['space_ahead'], velocity_share + msg['space_ahead'])
@@ -59,7 +59,7 @@ def main(lane, location, velocity):
                     velocity = max(velocity - 1, 0)
 
             elif server_req == 'kill':
-                    sock.sendall('client exiting'.encode('utf-8'))
+                    sock.sendall(bytes(json.dumps('client exiting'),'utf-8'))
                     sock.close()
                     sys.exit(1)
 

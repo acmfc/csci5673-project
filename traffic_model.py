@@ -305,7 +305,7 @@ def main(run_time):
 
         step(road, cars)
         step_count += 1
-        #print_road(road, carnames)
+        # print_road(road, carnames)
 
     for sv in solution_vehicles:
         sv.receive_msg('kill')
