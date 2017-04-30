@@ -100,6 +100,8 @@ class Car():
     def randomize(self):
         if self.velocity >= 1 and random.uniform(0, 1) < PROBABILITY_DECELERATE:
             self.velocity -= 1
+        if self.velocity == 0:
+            self.velocity == 1
 
     def move(self):
         self.location = (self.location + self.velocity) % ROAD_LENGTH
@@ -145,6 +147,7 @@ def step(road, cars):
         car.vel_tracker.append(car.velocity)
 
 def print_road(road, carnames):
+    # print(road)
     for i,lane in enumerate(road):
         print(''.format(i) + ' '.join(
             carnames[car] if car is not None else '_' for car in lane))
@@ -200,6 +203,7 @@ def main(run_time):
     road = make_road(NUM_LANES, ROAD_LENGTH)
 
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     listener.bind(('localhost', 9000))
     listener.listen()
 
@@ -242,13 +246,17 @@ def main(run_time):
         to_notify = {(car.lane, car.location): [] for car in cars}
         # Start by collecting all messages that will be delivered to each
         # solution vehicle.
+        # print(solution_vehicles)
+        # print(cars)
+
         for sv in solution_vehicles:
             try:
                 msg = sv.receive_msg('location')
                 for offset in range(1, BROADCAST_RANGE + 1):
                     loc_ahead = (sv.location + offset) % ROAD_LENGTH
-                    if road[0][loc_ahead] is not None and isinstance(road[0][offset], SolutionVehicle):
+                    if road[0][loc_ahead] is not None and isinstance(road[0][loc_ahead], SolutionVehicle):
                         to_notify[(0, sv.location)].append(road[0][loc_ahead])
+                        # print('sv added to to_notify: {}'.format(sv))
 
             except ValueError:
                 # Remove the vehicle from car list and road
@@ -263,7 +271,7 @@ def main(run_time):
                 carnames[new_car] = carnames[sv]
                 solution_vehicles.remove(sv)
 
-
+        # print(to_notify)
         # Deliver all collected messages along with the amount of free space
         # ahead.
         for coords in to_notify:
@@ -310,6 +318,7 @@ def main(run_time):
     for sv in solution_vehicles:
         sv.receive_msg('kill')
 
+    listener.shutdown()
     listener.close()
 
     total_distance = 0

@@ -38,10 +38,11 @@ def main(lane, location, velocity):
                     velocity += 1
 
                 # Calculate lead SV velocity
+                # print(sv_list)
                 if sv_list:
                     lead_sv = sv_list[-1]
                     velocity_share = max(min(lead_sv['space_ahead_lsv'] - 1,
-                        lead_sv['vel_ahead_lsv'], MAX_VELOCITY - 1), 0)
+                        lead_sv['vel_ahead_lsv'] - 1, MAX_VELOCITY - 1), 0)
 
                     for _ in range(len(sv_list)-1):
                         velocity_share = max(velocity_share - 1, 0)
@@ -52,11 +53,15 @@ def main(lane, location, velocity):
                         msg['velocity_ahead'] - 1, MAX_VELOCITY-1), 0)
 
                 # Set new velocity
+                # print('vel {}, vel_p {}, vel_s {}, sa {}, vpspace {}, vsspace {}'.format(velocity, velocity_pred, velocity_share, msg['space_ahead'],velocity_pred+msg['space_ahead'], velocity_share+msg['space_ahead']))
                 velocity = min(velocity, velocity_pred + msg['space_ahead'], velocity_share + msg['space_ahead'])
 
                 # Decrease velocity probabilistically
                 if velocity >= 1 and random.uniform(0, 1) < PROBABILITY_DECELERATE:
                     velocity = max(velocity - 1, 0)
+
+                if velocity == 0:
+                    velocity = 1
 
             elif server_req == 'kill':
                     sock.sendall(bytes(json.dumps('client exiting'),'utf-8'))
