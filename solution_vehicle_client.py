@@ -44,8 +44,8 @@ def main(lane, location, velocity):
                     velocity_share = max(min(lead_sv['space_ahead_lsv'] - 1,
                         lead_sv['vel_ahead_lsv'] - 1, MAX_VELOCITY - 1), 0)
 
-                    for _ in range(len(sv_list)-1):
-                        velocity_share = max(velocity_share - 1, 0)
+                    # for _ in range(len(sv_list)-1):
+                    #     velocity_share = max(velocity_share - 1, 0)
 
                 # Make prediction for car immediately in front of you
                 if velocity > msg['space_ahead']:

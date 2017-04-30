@@ -318,7 +318,7 @@ def main(run_time):
 
     total_distance = 0
     for car in cars:
-        print("{}: {}".format(carnames[car], car.vel_tracker))
+        # print("{}: {}".format(carnames[car], car.vel_tracker))
         total_distance += sum(car.vel_tracker)
     highway_mean_velocity = (total_distance / step_count) / len(cars)
 
