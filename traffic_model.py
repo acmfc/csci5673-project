@@ -147,7 +147,6 @@ def step(road, cars):
         car.vel_tracker.append(car.velocity)
 
 def print_road(road, carnames):
-    # print(road)
     for i,lane in enumerate(road):
         print(''.format(i) + ' '.join(
             carnames[car] if car is not None else '_' for car in lane))
@@ -246,8 +245,6 @@ def main(run_time):
         to_notify = {(car.lane, car.location): [] for car in cars}
         # Start by collecting all messages that will be delivered to each
         # solution vehicle.
-        # print(solution_vehicles)
-        # print(cars)
 
         for sv in solution_vehicles:
             try:
@@ -271,7 +268,6 @@ def main(run_time):
                 carnames[new_car] = carnames[sv]
                 solution_vehicles.remove(sv)
 
-        # print(to_notify)
         # Deliver all collected messages along with the amount of free space
         # ahead.
         for coords in to_notify:
@@ -318,7 +314,6 @@ def main(run_time):
     for sv in solution_vehicles:
         sv.receive_msg('kill')
 
-    listener.shutdown()
     listener.close()
 
     total_distance = 0
