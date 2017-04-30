@@ -115,6 +115,33 @@ class PerfectCar(Car):
     def randomize(self):
         pass
 
+def move_car_forward(road, list_of_cars, location):
+    new_loc = (location + 1) % ROAD_LENGTH
+    current_car = list_of_cars[-1]
+    prev_loc_car = list_of_cars[0]
+    if road[0][new_loc] is not None:
+        car_list = []
+        car_list.append(road[0][new_loc])
+        car_list.append(current_car)
+        road[0][new_loc] = car_list
+    else:
+        road[0][new_loc] = current_car
+    
+    road[0][location].remove(current_car)
+    road[0][location] = prev_loc_car
+
+def validity_check(road):
+    '''Validate consistency of road after update'''
+    done = False
+    found_list = False
+    while not done:
+        for i in range(ROAD_LENGTH):
+            if isinstance(road[0][i], list):
+                found_list = True
+                move_car_forward(road, road[0][i], i)
+            if not found_list:
+                done = True
+
 def step(road, cars):
     '''Run one step in the Nagel-Schreckenberg model.'''
     for car in cars:
@@ -136,7 +163,10 @@ def step(road, cars):
 
         if type(road[car.lane][prev_loc]) is list:
             prev_list = road[car.lane][prev_loc]
-            prev_list.remove(car)
+            try:
+                prev_list.remove(car)
+            except:
+                pass
 
             other_car = prev_list[0]
             road[car.lane][prev_loc] = other_car
@@ -310,6 +340,7 @@ def main(run_time):
         step(road, cars)
         step_count += 1
         # print_road(road, carnames)
+        validity_check(road)
 
     for sv in solution_vehicles:
         sv.receive_msg('kill')
